@@ -1,0 +1,230 @@
+sx = 10
+while (sx) sy += 10, sx--
+while (sy) stride += 10, sy--
+
+r++
+while(r)
+	r = read 2
+	y = 11
+	while(y) r -= 10, y--
+	r-- /* x -= 'o' == 111 */
+
+	set++
+	t++
+	while(r) /* r == 'u' > 111 */
+		read 6
+		y = 3
+		while(y) r-= 10, y--
+		r -= 2
+		while(r) /* r != ' ', so r == 'f' */
+			read 1
+			set--
+			r = 0
+		t--
+	while(t) /* x == 'o' */
+		set++
+		read 5
+		t--
+
+	r = read 1
+	t++
+	while(t)
+		r -= 44
+		while(r)
+			while(sx) cpy += 10, sx--
+			while(cpy) sx++, cpy--
+			r -= 4
+			while(r) sx++, r--
+			t++
+		t--
+		r = read 1
+	t++
+	while(t)
+		r -= 32
+		while(r)
+			while(sy) cpy += 10, sy--
+			while(cpy) sy++, cpy--
+			r -= 16
+			while(r) sy++, r--
+			t++
+		t--
+		r = read 1
+	read 8
+	t++
+	while(t)
+		r -= 44
+		while(r)
+			while(x) cpy += 10, x--
+			while(cpy) x++, cpy--
+			r -= 4
+			while(r) x++, r--
+			t++
+		t--
+		r = read 1
+	x++
+	t++
+	while(t)
+		r -= 32
+		while(r)
+			while(y) cpy += 10, y--
+			while(cpy) y++, cpy--
+			r -= 16
+			while(r) y++, r--
+			t++
+		t--
+		r = read 1
+	y++
+
+	while (stride) cpy++, t++, stride--
+	while (cpy) stride++, cpy--
+	while (sx) s++, ex--, sx--
+	while (sy) 
+		while (stride) cpy++, s++, stride--
+		while (cpy) stride++, cpy--
+		ey--, sy--
+	while (x) cpy++, t--, ex--
+	while (cpy) sx++, cpy--
+	
+	while (s)
+		arr
+		while(arr) >>
+		arr++
+		while(arr) <<
+		s--
+	while(y)
+		while(x)
+			arr[0]
+			while(arr) >>
+			< 
+			while(arr) arr--
+			<
+			while(arr) <<
+			while(set)
+				arr[0]
+				while(arr) >>
+				< arr++
+				while(arr) <<
+				cpy++
+				set--
+			while(cpy) set++ cpy--
+			while(arr) >>
+			arr++
+			while(arr) <<
+			x--
+		while(sx) x++, cpy++, sx--
+		while(cpy) sx++, cpy--
+		while(t)
+			arr[0] 
+			while(arr) >>
+			arr++
+			while(arr) <<
+			cpy++
+			t--
+		while(cpy) t++, cpy--
+		y--
+
+	while(set) set--
+	while(t) t--
+	arr[0] while(arr) >>
+	<< while(arr) arr--, <<
+	r
+
+while(stride) y++, cpy++, stride--
+while(cpy) stride++, cpy--
+sx = 32
+sy = 59
+t = 10
+while(y)
+	while(stride) x++, cpy++, stride--
+	while(cpy) stride++, cpy--
+	while(x)
+		set++
+		arr[0] while(arr) >>
+		< while(arr)
+			< while(arr) <<
+			set--
+			print sy
+			arr[0] while(arr) >>
+			< arr--
+		< while(arr) <<
+		while(set)
+			print sx
+			set--
+		x--
+	print t
+	y--
+
+	r = 0
+	sx = 2
+	sy = 3
+	stride = 10
+	t = stride
+	s = (3,2) = 3
+	x = 1
+	y = 6
+	cpy = 0
+a = 0
+0:
++
+1:
++
+2:
+...
+(3,1):
++
+(3,2):0
++
+(3,3):0
++
+(3,4):0
++
+(3,5):
+
+(3,6):
+
+(3,7):
+...
+(4,1):
+
+(4,2):
+
+(4,3):
+...
+(9,2):
+
+(9,3):
+
+(9,4):
+
+(9,5):
+
+(9,6):
+
+(9,7):
+
+
+x<<<[
+
+# load temp1 = y; temp0 = z
+y[temp1+temp2+y-]temp2[y+temp2-]
+z[temp0+temp2+z-]temp2[z+temp2-]
+# create trail of ones
+x>>[
+	[>>]+[<<]
+	>>
+	-
+]+
+# set pos = 0; and go back to beginning
+[>>] <
+[-] <
+[<<] >
+# 
+[
+	->[>>]<+
+	<[<<]>
+]
+
+>
+[>>]
+<<
+[-<<]
