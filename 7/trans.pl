@@ -1,57 +1,54 @@
 #!/usr/bin/perl
-print "circuit(A,D,E,F,G,H,I,X,Y) :-
-    D is 72,
-    E is 507,
-    F is 492,
-    G is 114,
-    H is 65412,
-    I is 65079,
-    X is 123,
-    Y is 456";
+
+print ":- include(\"circuit.pl\").\n";
+
+sub sop {
+	"$_[0]($_[1], N, B)";
+}
+
+sub dop {
+	"$_[0]($_[1], $_[2], N, B)";
+}
+
+sub pred {
+	"$_[0] :- $_[1].\n"
+}
+
 my $arrow = "->";
-my $first = 0;
 while(!eof(STDIN)) {
 	$line = <STDIN>;
 	@words = split ' ', $line;
-	if(!$first) {
-		print ",\n";
-	} else {
-		$first = 0;
-	}
-	print "    ";
 	if($words[1] eq $arrow) {
-		if($words[0] =~ m/[0-9]+/) {
-			print uc($words[2]) . " is " . uc($words[0]) . "";
-		} else {
-			print uc($words[2]) . " = " . uc($words[0]) . "";
-		}
+		print pred(sop("bit", $words[2]), sop("eql", $words[0]));
 	} elsif ($words[2] eq $arrow) {
-		if($words[1] =~ m/[0-9]+/) {
-			print uc($words[3]) . " is " . uc($words[1]) . "";
-		} else {
-			print uc($words[3]) . " = " . uc($words[1]) . "";
-		}
+		print pred(sop("bit", $words[3]), sop("not", $words[1]));
 	} else {
 		if($words[1] eq "AND") {
-			print uc($words[4]) . " = ";
-			print uc($words[0]) . " /\\ " . uc($words[2]) . "";
+			print pred(sop("bit", $words[4]), dop("and", $words[0], $words[2]));
 		} elsif ($words[1] eq "OR") {
-			print uc($words[4]) . " = ";
-			print uc($words[0]) . " \\/ " . uc($words[2]) . "";
+			print pred(sop("bit", $words[4]), dop("or", $words[0], $words[2]));
 		} elsif ($words[1] eq "XOR") {
-			print uc($words[4]) . " = ";
-			print "(" . uc($words[0]) . " \\/ " . uc($words[2]) . ") /\\ \\";
-			print "(" . uc($words[0]) . " /\\ " . uc($words[2]) . ") ";
+			print pred(sop("bit", $words[4]), dop("xor", $words[0], $words[2]));
 		} elsif ($words[1] eq "RSHIFT") {
-			print uc($words[4]) . " = ";
-			print uc($words[0]) . " >> " . uc($words[2]) . "";
+			print pred(sop("bit", $words[4]), dop("shft", $words[0], $words[2]));
 		} elsif ($words[1] eq "LSHIFT") {
-			print uc($words[4]) . " = ";
-			print "(" . uc($words[0]) . " << " . uc($words[2]) . ")";
-			print " /\\ 65535";
+			print pred(sop("bit", $words[4]), dop("shft", $words[0], "-".$words[2]));
 		} else {
 			print "UNRECOGNIZED OP $words[1]";
 		}
 	}
 }
-print ".\n"
+
+sub init {
+	pred(sop("bit", $_[0]), sop("eql", $_[1]));
+}
+
+print init("d", "72");
+print init("e", "507");
+print init("f", "492");
+print init("g", "114");
+print init("h", "65412");
+print init("i", "65079");
+print init("x", "123");
+print init("y", "456");
+
