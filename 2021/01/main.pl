@@ -27,4 +27,11 @@ count_increase([_], 0).
 count_increase([ A, B | T ], N) :- A >= B, count_increase([B|T], N).
 count_increase([ A, B | T ], N) :- A < B, count_increase([B|T], M), N is M + 1.
 
-main(N) :- phrase_from_file(lines(Nums), 'input.txt'), count_increase(Nums, N).
+answer1(N) :- phrase_from_file(lines(Nums), 'input.txt'), count_increase(Nums, N).
+
+sum_window([], []).
+sum_window([_], []).
+sum_window([_,_], []).
+sum_window([A,B,C | T], [N | Ns]) :- sum_window([B,C | T], Ns), N is A + B + C.
+
+answer2(N) :- phrase_from_file(lines(Nums), 'input.txt'), sum_window(Nums, Sums), count_increase(Sums, N).
