@@ -35,3 +35,15 @@ sum_window([_,_], []).
 sum_window([A,B,C | T], [N | Ns]) :- sum_window([B,C | T], Ns), N is A + B + C.
 
 answer2(N) :- phrase_from_file(lines(Nums), 'input.txt'), sum_window(Nums, Sums), count_increase(Sums, N).
+
+% an alternative solution that takes advantage of the fact that A > D implies A+B+C > B+C+D
+count_increase_4, [Count, B, C, D] -->
+	[Count0, A, B, C], uint(D), "\n",
+	{ D > A -> Count is Count0 + 1 ; Count is Count0 }.
+count_init, [0, A, B, C] --> uint(A), "\n", uint(B), "\n", uint(C), "\n".
+count2b_(Count) --> count_increase_4, count2b_(Count).
+count2b_(Count) --> [Count, _,_,_].
+count2b(Count) --> count_init, count2b_(Count).
+
+answer2b(N) :-
+	phrase_from_file(count2b(N), 'input.txt').
