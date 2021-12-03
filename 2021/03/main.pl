@@ -30,4 +30,36 @@ answer1(N) :-
 	N is Gamma * Alpha.
 
 
+tree(leaf(N), [], leaf(N1)) :- N1 is N + 1.
+tree(node(N, Left, Right), [], node(N1, Left, Right)) :- N1 is N + 1.
+tree(node(N, Left, Right), [0|Bs], node(N1, Left1, Right)) :-
+	N1 is N + 1, tree(Left, Bs, Left1).
+tree(node(N, Left, Right), [1|Bs], node(N1, Left, Right1)) :-
+	N1 is N + 1, tree(Right, Bs, Right1).
+tree(leaf(N), [0|Bs], node(N1, Left, leaf(0))) :-
+	N1 is N + 1, tree(leaf(0), Bs, Left).
+tree(leaf(N), [1|Bs], node(N1, leaf(0), Right)) :-
+	N1 is N + 1, tree(leaf(0), Bs, Right).
 
+tree_n(leaf(N), N).
+tree_n(node(N, _, _), N).
+
+ptree(In, Out) --> bits(Bs), { tree(In, Bs, Next) }, ptree(Next, Out).
+ptree(T, T) --> [].
+ptree(Out) --> ptree(leaf(0), Out).
+
+o2_rating(leaf(_), []).
+o2_rating(node(_, Left, Right), [0|Bs]) :- tree_n(Left, Ln), tree_n(Right, Rn), Ln > Rn, o2_rating(Left, Bs).
+o2_rating(node(_, Left, Right), [1|Bs]) :- tree_n(Left, Ln), tree_n(Right, Rn), Ln =< Rn, o2_rating(Right, Bs).
+
+co2_rating(leaf(_), []).
+co2_rating(node(_, Left, Right), [0|Bs]) :- tree_n(Left, Ln), tree_n(Right, Rn), Ln > 0, (Ln =< Rn ; Rn = 0), co2_rating(Left, Bs).
+co2_rating(node(_, Left, Right), [1|Bs]) :- tree_n(Left, Ln), tree_n(Right, Rn), Rn > 0, (Ln > Rn ; Ln = 0), co2_rating(Right, Bs).
+
+answer2(N) :-
+	phrase_from_input((ptree(BiTree), "\n")),
+	o2_rating(BiTree, O2B),
+	co2_rating(BiTree, CO2B),
+	num_from_bits(O2rating, O2B),
+	num_from_bits(CO2rating, CO2B),
+	N is O2rating * CO2rating.
