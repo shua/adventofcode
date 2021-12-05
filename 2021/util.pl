@@ -21,5 +21,8 @@ uint(I, 1) --> digit(I).
 uint(I, E) --> digit(Hd), uint(Tl, E0), { E is E0 * 10, I is E * Hd + Tl }.
 uint(I) --> uint(I, _).
 
+ws([]) --> [].
+ws([C|Cs]) --> C, ( C = " " ; C = "\n" ; C = "\t" ), ws(Cs).
+
 phrase_from_input(GR) :- phrase_from_file(GR, 'input.txt').
 
