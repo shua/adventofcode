@@ -167,19 +167,25 @@ answer1(N, Lines, Ls, Counts) :-
 	agg_counts(Ls, Counts),
 	calc_answer1(Counts, N).
 
-split_diag(LDiag, LDiagPts) :-
-	fail.
-prepare2(Lines, LinesOut) :-
-	time(group_lines1(Ls, LStr, LDiag)),
-	time(normalize(LStr, LNorm)),
-	time(split_verts(LNorm, LSplit)),
+% this assumes all the points in LDiag have already been normalized to go from top-to-bottom (Y2 > Y1)
+split_diag([], []).
+split_diag([[X,Y,X,Y]|LDiag], [[X,Y,X,Y]|LDiagPts]) :- split_diag(LDiag, LDiagPts).
+split_diag([[X1,Y1,X2,Y2]|LDiag], [[X1,Y1,X1,Y1]|LDiagPts]) :-
+	(X2 > X1, XX is X1 + 1 ; X2 < X1, XX is X1 - 1),
+	YY is Y1 + 1,
+	split_diag([[XX,YY,X2,Y2]|LDiag], LDiagPts).
+
+prepare2(Lines, YSorted) :-
+	time(normalize(Lines, LNorm)),
+	time(group_lines1(LNorm, LStr, LDiag)),
+	time(split_verts(LStr, LSplit)),
 	time(split_diag(LDiag, LDiagPts)),
 	append(LDiagPts, LSplit, LOut),
 	time(sort_lines(LOut, YSorted)).
 
 answer2(N, Lines, Ls, Counts) :-
 	phrase_from_input((lines(Lines), "\n")),
-	prepare1(Lines, Ls),
+	prepare2(Lines, Ls),
 	agg_counts(Ls, Counts),
 	calc_answer1(Counts, N).
 
