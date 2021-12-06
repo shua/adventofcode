@@ -1,4 +1,6 @@
-:- module(util, [seq//1, digit//1, uint//1, phrase_from_input/1]).
+:- module(util, [
+	seq//1, digit//1, uint//1, ws//1, csints//1,
+	phrase_from_input/1]).
 
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
@@ -23,6 +25,9 @@ uint(I) --> uint(I, _).
 
 ws([]) --> [].
 ws([C|Cs]) --> C, ( C = " " ; C = "\n" ; C = "\t" ), ws(Cs).
+
+csints([I|Is]) --> uint(I), ",", csints(Is).
+csints([I]) --> uint(I).
 
 phrase_from_input(GR) :- phrase_from_file(GR, 'input.txt').
 
