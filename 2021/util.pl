@@ -1,6 +1,7 @@
 :- module(util, [
 	seq//1, digit//1, uint//1, ws//1, csints//1,
-	phrase_from_input/1]).
+	phrase_from_input/1,
+	sum/2]).
 
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
@@ -30,4 +31,9 @@ csints([I|Is]) --> uint(I), ",", csints(Is).
 csints([I]) --> uint(I).
 
 phrase_from_input(GR) :- phrase_from_file(GR, 'input.txt').
+
+sum([], 0).
+sum([N|Ns], Sum) :-
+	sum(Ns, Sum0),
+	Sum is N + Sum0.
 
