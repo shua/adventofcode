@@ -25,7 +25,7 @@ uint(I, E) --> digit(Hd), uint(Tl, E0), { E is E0 * 10, I is E * Hd + Tl }.
 uint(I) --> uint(I, _).
 
 ws([]) --> [].
-ws([C|Cs]) --> C, ( C = " " ; C = "\n" ; C = "\t" ), ws(Cs).
+ws([C|Cs]) --> [C], { C = ' ' ; C = '\n' ; C = '\t' }, ws(Cs).
 
 csints([I|Is]) --> uint(I), ",", csints(Is).
 csints([I]) --> uint(I).
