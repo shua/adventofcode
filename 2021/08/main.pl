@@ -191,3 +191,4 @@ answer2(N, Decoded, Is) :-
 	uints(Decoded, Is),
 	sum(Is, N).
 
+% maybe better approach would be something like C in segs(7) & C nin segs(1) -> C = a
