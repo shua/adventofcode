@@ -1,7 +1,7 @@
 :- module(util, [
 	seq//1, digit//1, uint//1, ws//1, csints//1,
 	phrase_from_input/1,
-	sum/2]).
+	sum/2, msort/2]).
 
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
@@ -36,4 +36,11 @@ sum([], 0).
 sum([N|Ns], Sum) :-
 	sum(Ns, Sum0),
 	Sum is N + Sum0.
+
+msort(key, [], []).
+msort(key, [V|Vs], [V-0|KVs]) :- msort(key, Vs, KVs).
+msort(Vs, Sorted) :-
+	msort(key, Vs, KVs),
+	keysort(KVs, KVSorted),
+	msort(key, Sorted, KVSorted).
 
