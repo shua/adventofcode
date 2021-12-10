@@ -237,8 +237,8 @@ rows(M, Stride, [R|Rs]) :-
 	rows(M1, Stride, Rs).
 
 prepare2(Tags, Edges, Volumes) :-
-	input(M, Stride),
-	% sample(M, Stride),
+	% input(M, Stride),
+	sample(M, Stride),
 	basin_tags(M, Stride, Tags),
 	tag_edges(Tags, Edges0),
 	sort(Edges0, Edges),
@@ -257,10 +257,69 @@ time2_(N, [Id1-Id2|Edges], Volumes, EdgesOut, VolOut, [Ids|IdsNext]) :-
 	N1 is N - 1,
 	time2_(N1, EdgesCur, VolCur, EdgesOut, VolOut, IdsNext).
 
-
-answer2(N, Tags, Edges, Volumes, MergedVolumes) :-
+answer2a(N, Tags, Edges, Volumes, MergedVolumes) :-
 	prepare2(Tags, Edges, Volumes),
 	merge_graphs(Volumes, Edges, MergedVolumes0),
 	rm_value(0, MergedVolumes0, _, MergedVolumes),
 	max_n_vals(MergedVolumes, [Max1,Max2,Max3]),
 	N is Max1 * Max2 * Max3.
+
+% alternative to collecting all edges and then merging is to check up then left for previous id
+% if true then add an edge
+all_rows([], _, []).
+all_rows(M, Stride, [R|Rs]) :- append(R, M1, M), length(R, Stride), all_rows(M1, Stride, Rs).
+gtlt(N1, N2) :- (N1 > N2 ; N1 < N2).
+basin_scan(M, Stride, Tags, Edges) :-
+	list_of(Stride, 0, T0),
+	all_rows(M, Stride, Rows),
+	!,
+	basin_scan(Rows, 1, T0, [], Tags, Edges).
+basin_scan([], _, _, Edges, [], Edges).
+basin_scan([R|Rows], NewId, TPrev, EdgeAcc, [T|Tags], Edges) :-
+	basin_scan_horz(R, 0, NewId, TPrev, EdgeAcc, T, IdCur, EdgeCur),
+	basin_scan(Rows, IdCur, T, EdgeCur, Tags, Edges).
+basin_scan_horz([], _, NewId, [], EdgeAcc, [], NewId, EdgeAcc).
+basin_scan_horz([9|Ds], _, NewId, [_|TPrev], EdgeAcc, [0|TOut], IdOut, Edges) :-
+	basin_scan_horz(Ds, 0, NewId, TPrev, EdgeAcc, TOut, IdOut, Edges).
+basin_scan_horz([D|Ds], LastId, NewId, [Tp|TPrev], EdgeAcc, [To|TOut], IdOut, Edges) :-
+	D < 9,
+	(	Tp > 0, To = Tp,
+		(	LastId > 0,
+			(	gtlt(LastId, Tp), EdgeCur = [Tp-LastId|EdgeAcc]
+			;	LastId = Tp, EdgeCur = EdgeAcc
+			)
+		;	LastId = 0, EdgeCur = EdgeAcc
+		),
+		NewId2 = NewId
+	;	Tp = 0,
+		(	LastId > 0, To = LastId, NewId2 = NewId
+		;	LastId = 0, To = NewId, NewId2 is NewId + 1
+		),
+		EdgeCur = EdgeAcc
+	),
+	basin_scan_horz(Ds, To, NewId2, TPrev, EdgeCur, TOut, IdOut, Edges).
+
+show_tags([]).
+show_tags([[0|Ds]|Rs]) :- write(' '), show_tags([Ds|Rs]).
+show_tags([[D|Ds]|Rs]) :- D > 0, write(D), show_tags([Ds|Rs]).
+show_tags([[]|Rs]) :- write('\n'), show_tags(Rs).
+
+count9s([], 0).
+count9s([9|M], Count) :- count9s(M, Count0), Count is Count0 + 1.
+count9s([D|M], Count) :- D < 9, count9s(M, Count).
+sum_vals([], 0).
+sum_vals([_-V|KVs], Sum) :- sum_vals(KVs, Sum0), Sum is Sum0 + V.
+
+answer2b(N, Ts, Es, Vs, CNon9, C9, VMerged) :-
+	input(M, St),
+	basin_scan(M, St, Ts, Es0),
+	sort(Es0, Es),
+	volumes(Ts, Vs),
+	count9s(M, C9),
+	sum_vals(Vs, CNon9),
+	merge_graphs(Vs, Es, VMerged),
+	max_n_vals(VMerged, [M1,M2,M3]),
+	N is M1*M2*M3.
+
+answer2(N) :- time(answer2b(N, _,_,_, _,_, _)).
+
