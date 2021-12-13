@@ -73,6 +73,6 @@ show_dots(Row-Col, Rows-Cols, Ds) :-
 answer2(_) :- answer2(_,_,_).
 answer2(Ds, Fs, FnDs) :-
 	input(Ds, Fs),
-	foldn(Ds, Fs, FnDs0),
+	time(foldn(Ds, Fs, FnDs0)),
 	sort(FnDs0, FnDs),
 	show_dots(FnDs).
