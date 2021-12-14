@@ -67,14 +67,35 @@ apply_rules_mem([C1,C2]-N, Mem, [[C1,C2]-N-Exp|Out], Exp) :-
 % also, we just want the *counts* of every symbol, not the actual string
 %
 % still taking too long, maybe memoize counts?
+% memoize would be N iters * M pairs which is at least better scaling than 2^N
+%
+% can actually do N=20 now, takes around 1m
+% N=40 still taking too long, can we iterate with n/2 instead of n-1?
+% expand(N, [C1,C2], Cts)
+% expand(N/2, [C1,C2], CtsHf)
+% I guess we can iterate on Cs/2
+% expand(N, Cs, Cts) :- append(Cs1, Cs2, Cs), expand(N, Cs1, Cts1), expand(N, Cs2, Cts2), merge(Cts1, Cts2).
 
-app_cts(_, [C], _, [C-1]).
-app_cts(0, [C|Cs], _, [C-1|Cts]) :- app_cts(0, Cs, [], Cts).
-app_cts(N, [C1,C2|Cs], Rules, Cts) :-
-	N > 0, N1 is N - 1,
+split(Ls, L1, L2) :-
+	Ls = [_,_|_],
+	length(Ls, Ln),
+	L1n is Ln div 2,
+	append(L1, L2, Ls),
+	length(L1, L1n).
+
+app_cts(_, [C], _, Mem, Mem, [C-1]).
+app_cts(0, [C|Cs], _, Mem, Mem, [C-1|Cts]) :- app_cts(0, Cs, [], [], [], Cts).
+app_cts(1, [C1,C2], Rules, Mem, [[C1,C2]-1-Cts|Mem], Cts) :-
 	member([C1,C2]-[C], Rules),
-	app_cts(N, [C2|Cs], Rules, CtsIter),
-	app_cts(N1, [C1,C,C2], Rules, CtsRecur),
+	clump([C1-1,C2-1,C-1], Cts).
+app_cts(N, [C1,C2,C3|Cs], Rules, Mem, MemOut, Cts) :-
+	member([C1,C2,C3|Cs]-N-Cts, Mem)
+->	MemOut = Mem
+;	N > 0, N1 is N - 1,
+	member([C1,C2]-[C], Rules),
+	app_cts(N1, [C1,C,C2], Rules, Mem, Mem1, CtsRecur),
+	Mem2 = [[C1,C2]-N-CtsRecur|Mem1],
+	app_cts(N, [C2|Cs], Rules, Mem2, MemOut, CtsIter),
 	append(CtsIter, [C2-(-1)|CtsRecur], Cts0),
 	clump(Cts0, Cts).
 
