@@ -1,7 +1,7 @@
 :- module(util, [
 	seq//1, digit//1, uint//1, ws//1, csints//1,
 	phrase_from_input/1,
-	sum/2, msort/2]).
+	sum/2, msort/2, clump/2, counts/2]).
 
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
@@ -38,9 +38,24 @@ sum([N|Ns], Sum) :-
 	Sum is N + Sum0.
 
 msort(key, [], []).
-msort(key, [V|Vs], [V-0|KVs]) :- msort(key, Vs, KVs).
+msort(key, [V|Vs], [V-1|KVs]) :- msort(key, Vs, KVs).
 msort(Vs, Sorted) :-
 	msort(key, Vs, KVs),
 	keysort(KVs, KVSorted),
 	msort(key, Sorted, KVSorted).
+
+clump(KVs, Clumped) :-
+	keysort(KVs, KVSorted),
+	clump_(KVSorted, Clumped).
+clump_([], []).
+clump_([K-V], [K-V]).
+clump_([K1-V1,K1-V2|KVs], Out) :-
+	V is V1 + V2,
+	clump_([K1-V|KVs], Out).
+clump_([K1-V1,K2-V2|KVs], [K1-V1|Out]) :-
+	K1 @< K2, clump_([K2-V2|KVs], Out).
+
+counts(Vs, Counts) :-
+	msort(key, Vs, KVs),
+	clump(KVs, Counts).
 
