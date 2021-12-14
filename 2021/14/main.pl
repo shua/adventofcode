@@ -77,27 +77,33 @@ apply_rules_mem([C1,C2]-N, Mem, [[C1,C2]-N-Exp|Out], Exp) :-
 % expand(N, Cs, Cts) :- append(Cs1, Cs2, Cs), expand(N, Cs1, Cts1), expand(N, Cs2, Cts2), merge(Cts1, Cts2).
 
 split(Ls, L1, L2) :-
-	Ls = [_,_|_],
 	length(Ls, Ln),
 	L1n is Ln div 2,
 	append(L1, L2, Ls),
 	length(L1, L1n).
 
-app_cts(_, [C], _, Mem, Mem, [C-1]).
-app_cts(0, [C|Cs], _, Mem, Mem, [C-1|Cts]) :- app_cts(0, Cs, [], [], [], Cts).
-app_cts(1, [C1,C2], Rules, Mem, [[C1,C2]-1-Cts|Mem], Cts) :-
-	member([C1,C2]-[C], Rules),
-	clump([C1-1,C2-1,C-1], Cts).
-app_cts(N, [C1,C2,C3|Cs], Rules, Mem, MemOut, Cts) :-
-	member([C1,C2,C3|Cs]-N-Cts, Mem)
+app_cts(1, [C1,C2], Rules, Mem, MemOut, Cts) :-
+	member([C1-C2]-1-Cts, Mem)
 ->	MemOut = Mem
-;	N > 0, N1 is N - 1,
-	member([C1,C2]-[C], Rules),
-	app_cts(N1, [C1,C,C2], Rules, Mem, Mem1, CtsRecur),
-	Mem2 = [[C1,C2]-N-CtsRecur|Mem1],
-	app_cts(N, [C2|Cs], Rules, Mem2, MemOut, CtsIter),
-	append(CtsIter, [C2-(-1)|CtsRecur], Cts0),
+;	member([C1,C2]-[C], Rules),
+	clump([C1-1,C2-1,C-1], Cts),
+	MemOut = [[C1,C2]-1-Cts|Mem].
+app_cts(N, [C1,C2], Rules, Mem, MemOut, Cts) :-
+	N > 1,
+	(	member([C1,C2]-N-Cts, Mem)
+	->	MemOut = Mem
+	;	N1 is N - 1,
+		member([C1,C2]-[C], Rules),
+		app_cts(N1, [C1,C,C2], Rules, Mem, Mem1, Cts),
+		MemOut = [[C1,C2]-N-Cts|Mem1]
+	).
+
+app_cts(N, [C1,C2,C3|Cs], Rules, Mem, MemOut, Cts) :-
+	app_cts(N, [C1,C2], Rules, Mem, Mem1, Cts1),
+	app_cts(N, [C2,C3|Cs], Rules, Mem1, MemOut, Cts2),
+	append(Cts1, [C2-(-1)|Cts2], Cts0),
 	clump(Cts0, Cts).
+
 
 answer2(N) :- answer2(N, _,_,_,_,_).
 answer2(N, Init, Rules, S40, KMin-Min, KMax-Max) :-
