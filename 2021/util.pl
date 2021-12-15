@@ -1,7 +1,7 @@
 :- module(util, [
 	seq//1, digit//1, uint//1, ws//1, csints//1,
 	phrase_from_input/1,
-	sum/2, msort/2, clump/2, counts/2]).
+	sum/2, msort/2, clump/2, counts/2, eq_except/4]).
 
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
@@ -58,4 +58,8 @@ clump_([K1-V1,K2-V2|KVs], [K1-V1|Out]) :-
 counts(Vs, Counts) :-
 	msort(key, Vs, KVs),
 	clump(KVs, Counts).
+
+eq_except([], [], _, _).
+eq_except([V1|L1], [V1|L2], V3, V4) :- V1 \== V3, eq_except(L1, L2, V3, V4).
+eq_except([V1|L1], [V2|L1], V1, V2).
 

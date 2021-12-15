@@ -76,18 +76,23 @@ apply_rules_mem([C1,C2]-N, Mem, [[C1,C2]-N-Exp|Out], Exp) :-
 % I guess we can iterate on Cs/2
 % expand(N, Cs, Cts) :- append(Cs1, Cs2, Cs), expand(N, Cs1, Cts1), expand(N, Cs2, Cts2), merge(Cts1, Cts2).
 
-split(Ls, L1, L2) :-
-	length(Ls, Ln),
-	L1n is Ln div 2,
-	append(L1, L2, Ls),
-	length(L1, L1n).
-
+% this uses two approaches to limit resource usage:
+% 1. only return counts up the stack instead of the literal substrings, this limits memory
+%    building the whole string would use around 2^40 bytes, or 1TiB. I don't have that much RAM
+% 2. memoize computations on pairs, this limits computation
+%    all possible pairs must be represented in the rules, so the max memoized rules would
+%    be NumRules * N
+%
+% this can be thought of as a tree where each node has arbitrary children
+% it is depth first traversal, so rules are expanded on the leftmost pair N times until
+% N=1 then the counts for the pair is memoized and N=2 is evaluated for the right pair
 app_cts(1, [C1,C2], Rules, Mem, MemOut, Cts) :-
 	member([C1-C2]-1-Cts, Mem)
 ->	MemOut = Mem
 ;	member([C1,C2]-[C], Rules),
 	clump([C1-1,C2-1,C-1], Cts),
 	MemOut = [[C1,C2]-1-Cts|Mem].
+% depth recursion
 app_cts(N, [C1,C2], Rules, Mem, MemOut, Cts) :-
 	N > 1,
 	(	member([C1,C2]-N-Cts, Mem)
@@ -97,19 +102,21 @@ app_cts(N, [C1,C2], Rules, Mem, MemOut, Cts) :-
 		app_cts(N1, [C1,C,C2], Rules, Mem, Mem1, Cts),
 		MemOut = [[C1,C2]-N-Cts|Mem1]
 	).
-
+% recurse on children
 app_cts(N, [C1,C2,C3|Cs], Rules, Mem, MemOut, Cts) :-
 	app_cts(N, [C1,C2], Rules, Mem, Mem1, Cts1),
+	% Cs = [] more often than not
 	app_cts(N, [C2,C3|Cs], Rules, Mem1, MemOut, Cts2),
+	% the C2 is counted twice, so remove one
 	append(Cts1, [C2-(-1)|Cts2], Cts0),
 	clump(Cts0, Cts).
 
 
-answer2(N) :- answer2(N, _,_,_,_,_).
-answer2(N, Init, Rules, S40, KMin-Min, KMax-Max) :-
+% currently about 8s, I'll take it
+answer2(N) :- time(answer2(N, _,_,_,_,_)).
+answer2(N, Init, Rules, Mem, KMin-Min, KMax-Max) :-
 	input(Init, Rules),
-	time(apply_rulesn(40, Init, Rules, S40)),
-	counts(S40, Cts),
+	app_cts(40, Init, Rules, [], Mem, Cts),
 	min_max_values(Cts, KMin-Min, KMax-Max),
 	N is Max - Min.
 
