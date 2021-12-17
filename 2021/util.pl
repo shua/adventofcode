@@ -1,7 +1,7 @@
 :- module(util, [
 	seq//1, digit//1, uint//1, ws//1, csints//1,
 	phrase_from_input/1,
-	sum/2, msort/2, clump/2, counts/2, eq_except/4]).
+	sum/2, msort/2, clump/2, counts/2, eq_except/4, list_of/3]).
 
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
@@ -62,4 +62,7 @@ counts(Vs, Counts) :-
 eq_except([], [], _, _).
 eq_except([V1|L1], [V1|L2], V3, V4) :- V1 \== V3, eq_except(L1, L2, V3, V4).
 eq_except([V1|L1], [V2|L1], V1, V2).
+
+list_of(0, _, []).
+list_of(N, V, [V|Vs]) :- N > 0, N1 is N - 1, list_of(N1, V, Vs).
 
