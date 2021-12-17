@@ -2,14 +2,17 @@
 :- use_module(library(lists)).
 :- use_module(library(pio)).
 :- use_module(library(time)).
+:- use_module(library(format)).
 
-line([]) --> "\n".
-line([I|Is]) --> digit(I), line(Is).
-matrix(m(Stride, Data)) -->
-	line(Data), "\n", { length(Data, Stride) }.
-matrix(m(Stride, Data)) -->
-	line(L), { length(L, Stride) },
-	matrix(m(Stride, Data0)), { append(L, Data0, Data) }.
+line(D, D, 0) --> "\n".
+line(D, [I|Is], N) --> digit(I), line(D, Is, Nn), { N is Nn + 1 }.
+matrix(Stride, Data, m(Stride, Data)) --> "\n".
+matrix(Stride, Data, M) -->
+	line(Data, DataCur, Stride),
+	matrix(Stride, DataCur, M).
+matrix(M) -->
+	line([], L, Stride),
+	matrix(Stride, L, M).
 
 input(M) :- phrase_from_input(matrix(M)).
 
@@ -23,14 +26,14 @@ mget(m(S, Data), Row, Col, V) :-
 % https://en.wikipedia.org/wiki/A*_search_algorithm
 % length(Data, Dn), Inf = Dn * 9 + 1,
 astar(Self, Start, Goal, Path) :-
-	OpenSet = [Start],
-	CameFrom = [],
-	GScore = [Start-0],
+	Open = [Start],
+	From = [],
+	Gs = [Start-0],
 	astar_h(Self, Start, HStart),
-	FScore = [Start-HStart],
-	astar_iter(H, OpenSet, CameFrom, GScore, FScore, Path).
+	Fs = [Start-HStart],
+	astar_iter(Self, Goal, Open, From, Gs, Fs, Path).
 
-astar_iter(Self, Goal, [], CameFrom, GScore, FScore, error(CameFrom, GScore, FScore)).
+astar_iter(Self, Goal, [], From, Gs, Fs, error(Self, Open, From, Gs, Fs)).
 astar_iter(Self, Goal, Open, From, Gs, Fs, Path) :-
 	Open = [_|_], popminfscore(Open, Fs, Open0, Cur),
 	(	Cur == Goal, make_path(From, Cur, Path)
@@ -39,8 +42,30 @@ astar_iter(Self, Goal, Open, From, Gs, Fs, Path) :-
 		astar_gscores(Self, Cur, Gs, CurNs, GsNew),
 		astar_update(Self, Cur, Open, From, Gs, Fs, GsNew, Open1, From1, Gs1, Fs1)
 	).
+astar_iter(Self, Goal, Open, From, Gs, Fs, error(Self, Open, From, Gs, Fs)).
 
-popminfscore(Open, [Fs|Fss], Open0, Cur) :- fail.
+memopt(K, [], none).
+memopt(K, [K-V|_], some(V)).
+memopt(K, [K2-_|KVs], Is) :- (K @> K2 ; K @< K2), memopt(K, KVs, Is).
+
+optmin(none, none, none).
+optmin(some(V), none, some(V)).
+optmin(none, some(V), some(V)).
+optmin(some(V1), some(V2), some(V3)) :- (V1 < V2, V3 = V1 ; V2 =< V1, V3 = V3).
+
+popminfscore(Open, Fs, Open0, Cur) :-
+	findminfscore(Open, Fs, Cur),
+	append(Pre, [Cur|Post], Open),
+	append(Pre, Post, Open0).
+findminfscore([K], _, K).
+findminfscore([K|Ks], Fs, Cur) :-
+	findminfscore(Ks, Fs, Min),
+	memopt(K, Fs, Vo), memopt(Min, Fs, VMin),
+	optmin(Vo, VMin, V1),
+	(	V1 = Vo, Cur = K
+	;	V1 = VMin, Cur = Min
+	).
+
 	
 
 astar_neigh(a(_, Rn-Cn), R-C, CurNs) :-
