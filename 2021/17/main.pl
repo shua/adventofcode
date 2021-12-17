@@ -1,13 +1,16 @@
 :- use_module('../util.pl').
 :- use_module(library(lists)).
+:- use_module(library(time)).
 
 input(192, 251, -89, -59).
 sample(20, 30, -10, -5).
 
 answer1(N) :-
+	time((
 	input(_, _, YMin, _),
 	YMaxV is -1 * YMin - 1,
-	N is (YMaxV * (YMaxV+1)) div 2. 
+	N is (YMaxV * (YMaxV+1)) div 2
+	)).
 
 expected2([
 	[23,-10],  [25,-9],   [27,-5],   [29,-6],   [22,-6],   [21,-7],   [9,0],     [27,-7],   [24,-5],
@@ -25,6 +28,7 @@ expected2([
 	[8,-2],    [27,-8],   [30,-5],   [24,-7]
 ]).
 
+answer2(N) :- time(answer2(N, _, _, _, _, _, _)).
 answer2(N, Yvs, Xvs, MaxSteps, StepVs, Vs, VSorted) :-
 	input(XMin, XMax, YMin, YMax),
 	%sample(XMin, XMax, YMin, YMax),
