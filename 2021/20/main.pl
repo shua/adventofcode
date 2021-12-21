@@ -35,8 +35,13 @@ truncate(Bs, N, BOut) :-
 
 lshft([_,_,_,B1,B2,B3,B4,B5,B6], [B7,B8,B9], [B1,B2,B3,B4,B5,B6,B7,B8,B9]).
 
+% list with integer, vs bitree with bits
 nth([Hn|_], 0, Hn).
 nth([_|T], N, Hn) :- N > 0, N1 is N - 1, nth(T, N1, Hn).
+nth(l(N), [], N).
+nth(n(T1,T2), [], n(T1,T2)).
+nth(n(_,T2), [1|Bs], N) :- nth(T2, Bs, N).
+nth(n(T1,_), [0|Bs], N) :- nth(T1, Bs, N).
 
 mval(m(Bs, S, F), R-C, F) :-
 	C < 0 ; C >= S
@@ -104,4 +109,45 @@ count_bits([0|Bs], 1, N) :- count_bits(Bs, 1, N).
 count_bits([1|Bs], 1, N) :- count_bits(Bs, 1, N1), N is N1 + 1.
 count_bits([1|Bs], 0, N) :- count_bits(Bs, 0, N).
 count_bits([0|Bs], 0, N) :- count_bits(Bs, 0, N1), N is N1 + 1.
+
+answer1(N) :-
+	input(A,M),
+	process(M,A,M1),
+	process(M1,A,M2),
+	count_bits(M2, _, N).
+
+bitree([N], l(N)).
+bitree(L, n(T1,T2)) :-
+	L = [_,_|_],
+	length(L, N), Nh is N div 2,
+	append(L1, L2, L), length(L1, Nh),
+	bitree(L1, T1),
+	bitree(L2, T2).
+
+process2(m(Bs, Stride, Fill), Alg, m(BOut, St2, FillP)) :-
+	% M1 fill from M fill and alg
+	bitree(Alg, ATr),
+	list_of(9, Fill, Fbs), nth(ATr, Fbs, FillP),
+	% priming the bits for the first row of data
+	St2 is Stride + 2,
+	list_of(St2, Fbs, RBuf),
+	prows(Bs, Stride, Fill, RBuf, Bits0),
+	append(Bits0, Bits),
+	mapalg2(ATr, Bits, BOut).
+
+mapalg2(_, [], []).
+mapalg2(Alg, [Bits|Rest], [B|Bs]) :-
+	nth(Alg, Bits, B),
+	mapalg2(Alg, Rest, Bs).
+
+process2n(0, M, _, M).
+process2n(N, M, A, Mn) :-
+	N > 0, N1 is N - 1,
+	process2(M, A, M1),
+	process2n(N1, M1, A, Mn).
+
+answer2(N) :-
+	input(A, M),
+	time(process2n(50, M, A, Mn)),
+	count_bits(Mn, _, N).
 
