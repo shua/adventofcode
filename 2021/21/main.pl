@@ -99,3 +99,74 @@ answer1(N, S1, S2, S1s, S2s, Rolls, LoseScore) :-
 	LoseScore is LTurnDiv10 * Ls + LTurnVal,
 	N is Rolls * LoseScore.
 
+/*
+As you experiment with the die, you feel a little strange. An informational brochure in the compartment explains that this is a quantum die: when you roll it, the universe splits into multiple copies, one copy for each possible outcome of the die. In this case, rolling the die always splits the universe into three copies: one where the outcome of the roll was 1, one where it was 2, and one where it was 3.
+
+The game is played the same as before, although to prevent things from getting too far out of hand, the game now ends when either player's score reaches at least 21.
+
+Using the same starting positions as in the example above, player 1 wins in 444356092776315 universes, while player 2 merely wins in 341960390180808 universes.
+*/
+
+% N turns/player/round
+% M possible rolls/player = 3^N
+% N < 21 because after N turns either player will have at least 21 regardless of what their rolls were
+% avg of 1-10 is 5.5, so let's say N is likely 4-5
+% (P1 + D1+D2+D3 mod 10) + 1 , 27 universes :
+% 1+1+1 1+1+2 1+1+3  1+2+1 1+2+2 1+2+3  1+3+1 1+3+2 1+3+3
+% 3     4     5      4     5     6      5     6     7
+% 2+1+1 2+1+2 2+1+3  2+2+1 2+2+2 2+2+3  2+3+1 2+3+2 2+3+3
+% 4     5     6      5     6     7      6     7     8
+% 3+1+1 3+1+2 3+1+3  3+2+1 3+2+2 3+2+3  3+3+1 3+3+2 3+3+3
+% 5     6     7      6     7     8      7     8     9
+%
+% 3: 1/27  4: 3/27  5: 6/27  6: 7/27  7: 6/27  8: 3/27  9: 1/27
+
+% combining probs is V1+V2-P1*P2
+% then clump to reduce map size
+
+weights([3-1,4-3,5-6,6-7,7-6,8-3,9-1]).
+
+roll(Ws, Wn) :-
+	weights(W0s),
+	roll(W0s, Ws, W0s, Wn).
+roll(_, [], _, []).
+roll(W0s, [_|Ws], [], Wn) :-
+	roll(W0s, Ws, W0s, Wn).
+roll(W0s, [S-P|Ws], [Vr-Pr|Wrs], [S1-P1|Wn]) :-
+	stadvance(S, Vr, S1), P1 is P * Pr,
+	roll(W0s, [S-P|Ws], Wrs, Wn).
+
+stadvance(s(Pos, Score), Roll, s(Po, So)) :-
+	Po is (Pos+Roll) mod 10,
+	So is Score + Po + 1.
+
+wins([], [], 0).
+wins([s(P,Sa)-Pr|Ws], [s(P,Sa)-Pr|Wo], S) :-
+	Sa < 21,
+	wins(Ws, Wo, S).
+wins([s(_,Sa)-Pr|Ws], Wo, S) :-
+	Sa >= 21,
+	wins(Ws, Wo, Sn),
+	S is Sn + Pr.
+
+playn(0, W, W, [0,0]).
+playn(N, [W1,W2], Wn, [S1,S2]) :-
+	N > 0, N1 is N - 1,
+	roll(W1, W1a), wins(W1a, W1b, S1a), clump(W1b, W1c),
+	roll(W2, W2a), wins(W2a, W2b, S2a), clump(W2b, W2c),
+	playn(N1, [W1c,W2c], Wn, [S1n,S2n]),
+	zip(_, Vs2, W2a), sum(Vs2, V2Sum),
+	zip(_, Vs1, W1c), sum(Vs1, V1Sum),
+	S1 is S1a*V2Sum + S1n,
+	S2 is S2a*V1Sum + S2n.
+
+answer2(N, S1, S2) :-
+	input(P1, P2),
+	% there's guaranteed to be no losers after 21 turns, as every turn wins both
+	% players at least 1 point in every turn
+	playn(21, [[s(P1,0)-1],[s(P2,0)-1]], _, [S1,S2]),
+	% honestly, no sure why it's S1/27 and not just S1?
+	(	S1 > S2, N is S1 div 27
+	;	S2 > S1, N is S2
+	).
+
