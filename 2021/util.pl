@@ -21,8 +21,8 @@ digit(7) --> "7".
 digit(8) --> "8".
 digit(9) --> "9".
 
-uint(I, 1) --> digit(I).
 uint(I, E) --> digit(Hd), uint(Tl, E0), { E is E0 * 10, I is E * Hd + Tl }.
+uint(I, 1) --> digit(I).
 uint(I) --> uint(I, _).
 
 ws([]) --> [].
