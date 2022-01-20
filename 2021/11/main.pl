@@ -2,6 +2,7 @@
 :- use_module(library(lists)).
 :- use_module(library(pio)).
 :- use_module(library(format)).
+:- use_module(library(time)).
 
 :- op(900, fx, *).
 *(_) :- true.
@@ -152,5 +153,14 @@ simn(N, Mi, Mo, Fs) :-
 	simn(N1, Mc, Mo, Fn),
 	Fs is Fc + Fn.
 
-answer1(N) :- input(M), simn(100, M, _, N).
+sim_coord(m(_, D), 0) :- length(D, N), list_of(N, 0, D).
+sim_coord(M, N) :-
+	sim(M, M1, _),
+	sim_coord(M1, Nn),
+	N is Nn + 1.
+
+
+answer1(N) :- input(M), time(simn(100, M, _, N)).
+
+answer2(N) :- input(M), time(sim_coord(M, N)).
 
