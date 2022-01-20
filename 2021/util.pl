@@ -7,8 +7,8 @@
 :- use_module(library(dcgs)).
 :- use_module(library(pio)).
 
-seq([]) --> [].
-seq([C | Cs ]) --> [C], seq(Cs).
+%seq([]) --> [].
+%seq([C|Cs]) --> [C], seq(Cs).
 
 digit(0) --> "0".
 digit(1) --> "1".
