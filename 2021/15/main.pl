@@ -1,134 +1,162 @@
 :- use_module('../util.pl').
 :- use_module(library(lists)).
+:- use_module(library(random)).
+:- use_module(library(dcgs)).
 :- use_module(library(pio)).
-:- use_module(library(time)).
 :- use_module(library(format)).
 
-line(D, D, 0) --> "\n".
-line(D, [I|Is], N) --> digit(I), line(D, Is, Nn), { N is Nn + 1 }.
-matrix(Stride, Data, m(Stride, Data)) --> "\n".
-matrix(Stride, Data, M) -->
-	line(Data, DataCur, Stride),
-	matrix(Stride, DataCur, M).
-matrix(M) -->
-	line([], L, Stride),
-	matrix(Stride, L, M).
+mat_row([], 0) --> "\n".
+mat_row([D|Ds], N) --> digit(D), mat_row(Ds, N0), { N is N0 + 1 }.
+mat(m(N, D)) --> mat_row(D0, N), mat(m(N, Dn)), { append(D0, Dn, D) }.
+mat(m(N, D)) --> mat_row(D, N).
 
-input(M) :- phrase_from_input(matrix(M)).
+input(M) :- phrase_from_file((mat(M), "\n"), 'input.txt').
 
-mget(M, R-C, V) :- mget(M, R, C, V).
-mget(m(S, Data), Row, Col, V) :-
-	Col < S,
-	I is Row * S + Col,
+sample(M) :- append([
+	"1163751742\n",
+	"1381373672\n",
+	"2136511328\n",
+	"3694931569\n",
+	"7463417111\n",
+	"1319128137\n",
+	"1359912421\n",
+	"3125421639\n",
+	"1293138521\n",
+	"2311944581\n"
+], Src), phrase(mat(M), Src).
+
+mat_get(m(Cs, D), [R,C], V) :-
+	I is R * Cs + C,
+	append(Pre, [V|_], D),
+	length(Pre, I).
+mat_eq_except(m(Cs, A), m(Cs, B), [R,C], V) :-
+	I is R * Cs + C,
+	append(Pre, [_|Post], A),
 	length(Pre, I),
-	append(Pre, [V|_], Data).
+	append(Pre, [V|Post], B).
+mat_verts(m(Cs, D), Verts) :-
+	length(D, N), Rs is N div Cs,
+	mat_verts(Rs, Cs, 0, 0, Verts).
+mat_verts(Rs, _, Rs, 0, []).
+mat_verts(Rs, Cs, R, Cs, Verts) :-
+	R < Rs, R1 is R + 1,
+	mat_verts(Rs, Cs, R1, 0, Verts).
+mat_verts(Rs, Cs, R, C, [[R,C]|Verts]) :-
+	R < Rs, C < Cs, C1 is C + 1,
+	mat_verts(Rs, Cs, R, C1, Verts).
 
-% https://en.wikipedia.org/wiki/A*_search_algorithm
-% length(Data, Dn), Inf = Dn * 9 + 1,
-astar(Self, Start, Goal, Path) :-
-	Open = [Start],
-	From = [],
-	Gs = [Start-0],
-	astar_h(Self, Start, HStart),
-	Fs = [Start-HStart],
-	astar_iter(Self, Goal, Open, From, Gs, Fs, Path).
+lt(A, B) :- integer(A), integer(B), A < B.
+lt(A, infinity) :- integer(A).
 
-astar_iter(Self, Goal, [], From, Gs, Fs, error(Self, Open, From, Gs, Fs)).
-astar_iter(Self, Goal, Open, From, Gs, Fs, Path) :-
-	Open = [_|_], popminfscore(Open, Fs, Open0, Cur),
-	(	Cur == Goal, make_path(From, Cur, Path)
-	;	Cur =\= Goal,
-		astar_neigh(Self, Cur, CurNs),
-		astar_gscores(Self, Cur, Gs, CurNs, GsNew),
-		astar_update(Self, Cur, Open, From, Gs, Fs, GsNew, Open1, From1, Gs1, Fs1)
+djikstra(M, Src, Dst, Path) :-
+	format("init~n", []),
+	mat_verts(M, Unvisited),
+	djikstra_init(M, Dist0, Prev),
+	mat_eq_except(Dist0, Dist, Src, 0),
+	format("start~n", []),
+	remove_min(Unvisited, Dist, Q, U),
+	djikstra_(M, Dst, U, Q-_, Dist-_, Prev-Prevp),
+	reconstruct_path(Prevp, Src, Dst, Path).
+djikstra_init(m(Cs, M), m(Cs, Dist), m(Cs, Prev)) :-
+	length(M, N),
+	list_of(N, infinity, Dist),
+	list_of(N, undefined, Prev).
+djikstra_(_, _, _, []-[], Dist-Dist, Prev-Prev).
+% can stop early if U = Dst
+djikstra_(M, Dst, Dst-_, Q-Q, Dist-Dist, Prev-Prev) :-
+	show_state(M, Q).
+djikstra_(M, Dst, U-DistU, Q-Qp, Dist-Distp, Prev-Prevp) :-
+	format("choose ~w ~w~n", [U, DistU]),
+	( random_integer(0, 10, X), X = 2 -> show_state(M, Q) ; true ),
+	neighbors(U, UNeigbors),
+	set_isect(UNeigbors, Q, QNeighbors),
+	update_neighbors(QNeighbors, M, U-DistU, Dist-Distc, Prev-Prevc),
+	remove_min(Q, Distc, Qc, NextU),
+	djikstra_(M, Dst, NextU, Qc-Qp, Distc-Distp, Prevc-Prevp).
+
+mat_val_key(_, [], []).
+mat_val_key(Vs, [K|Ks], [V-K|VKs]) :-
+	mat_get(Vs, K, V),
+	mat_val_key(Vs, Ks, VKs).
+remove_min(Ks, Vs, Kp, K-V) :-
+	Ks = [_|_],
+	mat_val_key(Vs, Ks, VKs),
+	msort(VKs, [V-K|_]),
+	append(Pre, [K|Post], Ks),
+	append(Pre, Post, Kp).
+
+neighbors([R,C], Ns) :-
+	Lt is C - 1, Rt is C + 1,
+	Up is R - 1, Dn is R + 1,
+	Ns = [        [Up,C],
+	       [R,Lt],       [R,Rt],
+	              [Dn,C]        ].
+
+set_isect(A, B, C) :-
+	length(A, An), length(B, Bn),
+	(	(An < Bn ; An = Bn),
+		set_isect_(A, B, C)
+	;	Bn < An,
+		set_isect_(B, A, C)
 	).
-astar_iter(Self, Goal, Open, From, Gs, Fs, error(Self, Open, From, Gs, Fs)).
+set_isect_([], _, []).
+set_isect_([A|As], Bs, Cs) :-
+	memberchk(A, Bs) ->
+	set_isect_(As, Bs, Ds),
+	Cs = [A|Ds]
+;	set_isect_(As, Bs, Cs).
 
-memopt(K, [], none).
-memopt(K, [K-V|_], some(V)).
-memopt(K, [K2-_|KVs], Is) :- (K @> K2 ; K @< K2), memopt(K, KVs, Is).
+update_neighbors([], _, _, Dist-Dist, Prev-Prev).
+update_neighbors([N|Ns], M, U-DistU, Dist-Distp, Prev-Prevp) :-
+	mat_get(M, N, DistUN),
+	Alt is DistU + DistUN,
+	mat_get(Dist, N, DistN),
+	(	lt(Alt, DistN),
+		mat_eq_except(Dist, Distc, N, Alt),
+		mat_eq_except(Prev, Prevc, N, U)
+	;	( lt(DistN, Alt) ; Alt = DistN ),
+		Distc = Dist, Prevc = Prev
+	),
+	update_neighbors(Ns, M, U-DistU, Distc-Distp, Prevc-Prevp).
 
-optmin(none, none, none).
-optmin(some(V), none, some(V)).
-optmin(none, some(V), some(V)).
-optmin(some(V1), some(V2), some(V3)) :- (V1 < V2, V3 = V1 ; V2 =< V1, V3 = V3).
+reconstruct_path(Prev, Src, Dst, Path) :-
+	reconstruct_path(Prev, Src, Dst, [Dst], Path).
+reconstruct_path(_, Src, Src, Path, Path).
+reconstruct_path(Prev, Src, Cur, Path, Pathp) :-
+	Cur \== Src,
+	mat_get(Prev, Cur, Next),
+	reconstruct_path(Prev, Src, Next, [Next|Path], Pathp).
 
-popminfscore(Open, Fs, Open0, Cur) :-
-	findminfscore(Open, Fs, Cur),
-	append(Pre, [Cur|Post], Open),
-	append(Pre, Post, Open0).
-findminfscore([K], _, K).
-findminfscore([K|Ks], Fs, Cur) :-
-	findminfscore(Ks, Fs, Min),
-	memopt(K, Fs, Vo), memopt(Min, Fs, VMin),
-	optmin(Vo, VMin, V1),
-	(	V1 = Vo, Cur = K
-	;	V1 = VMin, Cur = Min
-	).
+show_path(m(Cs, D), Path) :-
+	show_path(D, Cs, [0,0], Path).
+show_path([], _, _, _).
+show_path(D, Cs, [R,Cs], Path) :-
+	R1 is R + 1,
+	format("~n", []),
+	show_path(D, Cs, [R1,0], Path).
+show_path([D|Ds], Cs, [R,C], Path) :-
+	C < Cs,
+	(	member([R,C], Path) ->
+		format("\x1b\[31m~d\x1b\[0m", [D])
+	;	format("~d", [D])
+	),
+	C1 is C + 1,
+	show_path(Ds, Cs, [R,C1], Path).
 
-	
-
-astar_neigh(a(_, Rn-Cn), R-C, CurNs) :-
-	C1 is C + 1, R1 is R + 1,
-	( R > 0, Ru is R - 1, N0 = [Ru-C] ; R = 0, N0 = [] ),
-	( C > 0, Cl is C - 1, N1 = [R-Cl|N0] ; C = 0, N1 = N0 ),
-	( C1 < Cn, Cr is C + 1, N2 = [R-Cr|N1] ; C1 = Cn, N2 = N1 ),
-	( R1 < Rn, Rd is R + 1, N3 = [Rd-C|N2] ; R1 = Rn, N3 = N2 ),
-	!,
-	CurNs = N3.
-
-astar_gscores(_, _, _, [], []).
-astar_gscores(Self, Cur, Gs, [N|CurNs], [N-Ng|GsNew]) :-
-	member(Cur-Cg, Gs),
-	astar_d(Self, Cur, N, Dcn),
-	Ng is Cg + Dcn,
-	astar_gscores(Self, Cur, Gs, CurNs, GsNew).
-
-astar_d(a(M, _), RC1, RC2, D) :-
-	taxi_dist(RC1, RC2, 1), % assert that this is a neighbor
-	mget(M, RC2, D).
-
-taxi_dist(R1-C1, R2-C2, D) :-
-	( C1 >= C2, Cd is C1 - C2 ; C1 < C2, Cd is C2 - C1 ),
-	( R1 >= R2, Rd is R1 - R2 ; R1 < R2, Rd is R2 - R1 ),
-	D is Rd + Cd.
-
-/*
-if tentative_gScore < gScore[neighbor]
-	// This path to neighbor is better than any previous one. Record it!
-	cameFrom[neighbor] := current
-	gScore[neighbor] := tentative_gScore
-	fScore[neighbor] := tentative_gScore + h(neighbor)
-	if neighbor not in openSet
-		openSet.add(neighbor)
- */
-
-astar_update(Self, Cur, Open, From, Gs, Fs, [], Open, From, Gs, Fs).
-astar_update(Self, Cur, Open, From, Gs, Fs, [G1|GsNew], Open1, From1, Gs1, Fs1) :-
-	update_min(Gs, G1, Gs0, Mut),
-	(	Mut = 0,
-		astar_update(Self, Cur, Open, From, Gs, Fs, GsNew, Open1, From1, Gs1, Fs1)
-	;	Mut = 1,
-		G1 = N-Ng,
-		update(From, N, Cur, From0),
-		astar_h(Self, N, Nh), Nf is Ng + Nh,
-		update(Fs, N, Nf, Fs0),
-		sort([N|Open], Open0),
-		astar_update(Self, Cur, Open0, From0, Gs0, Fs0, GsNew, Open1, From1, Gs1, Fs1)
-	).
-
-update(In, K, V, Out) :-
-	append(Pre, [K-_|Post], In)
-->	append(Pre, [K-V|Post], Out)
-;	sort([K-V|In], Out).
-
-update_min(In, K-V, Out, Mut) :-
-	append(Pre, [K-V1|Post], In)
-->	( V < V1, append(Pre, [K-V|Post], Out), Mut = 1 ; V >= V1, Out = In, Mut = 0 )
-;	sort([K-V|In], Out).
-
-% assume every point in between is middle 5
-astar_h(a(_, Rn-Cn), R-C, H) :-
-	taxi_dist(R-C, Rn-Cn, H1),
-	H is H1 * 5.
+show_state(m(Cs, D), Unvisited) :-
+	show_state(D, Cs, [0,0], Unvisited).
+show_state([], _, _, _) :- format("~n", []).
+show_state(D, Cs, [R,Cs], Unvisited) :-
+	D = [_|_],
+	R1 is R + 1,
+	format("~n", []),
+	show_state(D, Cs, [R1,0], Unvisited).
+show_state([D|Ds], Cs, [R,C], Unvisited) :-
+	C < Cs,
+	(	member([R,C], Unvisited) ->
+		format("~d", [D])
+	;	format("\x1b\[90m~d\x1b\[0m", [D])
+	),
+	C1 is C + 1,
+	show_state(Ds, Cs, [R,C1], Unvisited).
 
