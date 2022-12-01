@@ -70,3 +70,10 @@ list_of(N, V, [V|Vs]) :- N > 0, N1 is N - 1, list_of(N1, V, Vs).
 zip([], [], []).
 zip([K|Ks], [V|Vs], [K-V|KVs]) :- zip(Ks, Vs, KVs).
 
+bits(0, []).
+bits(N, [B|Bs]) :-
+	N > 0,
+	B is N mod 2,
+	N1 is N div 2,
+	bits(N1, Bs).
+

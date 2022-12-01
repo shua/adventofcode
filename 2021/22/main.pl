@@ -1,120 +1,121 @@
 :- use_module('../util.pl').
-:- use_module(library(format)).
 :- use_module(library(lists)).
-:- use_module(library(time)).
+:- use_module(library(pio)).
+:- use_module(library(format)).
 
-onoff(1) --> "on".
-onoff(0) --> "off".
-
-int(I) --> "-", uint(In), { I is -In }.
+% try dumb simple first
+onoff(on) --> "on". onoff(off) --> "off".
+int(In) --> "-", uint(I), { In is -I }.
 int(I) --> uint(I).
 
-bound([Lo,Hi]) --> int(Lo), "..", int(Hi).
+instr(IO, [Xm,XM,Ym,YM,Zm,ZM]) -->
+	onoff(IO),
+	" x=", int(Xm), "..", int(XM),
+	",y=", int(Ym), "..", int(YM),
+	",z=", int(Zm), "..", int(ZM).
+instrs([]) --> "\n".
+instrs([instr(IO, Bounds)|Is]) --> instr(IO, Bounds), "\n", instrs(Is).
 
-line([X-[Y-[Z-IO]]]) --> onoff(IO), " x=", bound(X), ",y=", bound(Y), ",z=", bound(Z). 
+min(A, B, A) :- A < B. min(A, B, B) :- B < A. min(A, A, A).
+max(A, B, A) :- A > B. max(A, B, B) :- B > A. max(A, A, A).
+clamp(A, [Min,Max], B) :- max(A, Min, C), min(C, Max, B).
 
-lines([T|Ls]) --> line(T), "\n", lines(Ls).
-lines([]) --> [].
-
-input(Ls) :- phrase_from_input((lines(Ls), "\n")).
-
-% can we store intervals as a tree?
-% ^  ##
-% | ###  2..3,2..3  t(2..3,n(2..3))
-% | ##   3..4,3..4  t(2..2,n(2..3)),t(3..3,n(2..4)),t(4..4,n(3..4))
-% |   #  4..4,1..1  t(2..2,n(2..3)),t(3..3,n(2..4)),t(4..4,n(1..1),n(3..4))
-% 0--->
-
-%  []           range contains
-%      []       range does not contain
-%  [...]        range intersects 1 min
-%      [...]    range intersects 1 max
-%   [......]    range intersects 2
-% [..]    [..]
-
-norm([], []).
-norm([N], [N]).
-norm([_-0|Ts], Tn) :-
-	norm(Ts, Tn).
-norm([[Min0,Max0]-S0, [Min1,Max1]-S1 | T], TOut) :-
-	(S0 = [_|_] ; S0 = 1),
-	(	Min1 =:= Max0+1, S0 = S1
-	->	norm([[Min0,Max1]-S0|T], TOut)
-	;	norm([[Min1,Max1]-S1|T], TOut1),
-		TOut = [[Min0,Max0]-S0|TOut1]
+filter(_, [], []).
+filter(C, [I|Is], IsP) :-
+	I = instr(IO, [Xm,XM,Ym,YM,Zm,ZM]),
+	clamp(Xm, C, XmP), clamp(XM, C, XMP),
+	clamp(Ym, C, YmP), clamp(YM, C, YMP),
+	clamp(Zm, C, ZmP), clamp(ZM, C, ZMP),
+	(	( XmP = XMP ; XmP < XMP, ( YmP = YMP ; YmP < YMP, ZmP = ZMP ) ),
+		filter(C, Is, IsP)
+	;	XmP < XMP, YmP < YMP, ZmP < ZMP,
+		IsP = [instr(IO, [XmP,XMP,YmP,YMP,ZmP,ZMP])|IsPP],
+		filter(C, Is, IsPP)
 	).
+uniq([], []).
+uniq([V], [V]).
+uniq([I,I|Is], IsP) :-
+	uniq([I|Is], IsP).
+uniq([I1,I2|Is], [I1|IsP]) :-
+	I1 \== I2,
+	uniq([I2|Is], IsP).
 
-merge(0, 1, 1).
-merge(0, 0, 0).
-merge(1, 1, 1).
-merge(1, 0, 0).
-merge([], T2, T2).
-merge(T1, [], T1) :- T1 = [_|_].
-merge(T0, T1, Tn) :-
-	T0 = [_|_], T1 = [_|_],
-	format("merge(~w, ~w, ?)~n", [T0, T1]),
-	merge_(T0, T1, To),
-	format("norm(~w, ?)~n", [To]),
-	norm(To, Tn).
+input(Is) :- phrase_from_file(instrs(Is), 'input.txt').
 
-merge_([[L,R]-S0|T0], [[L,R]-S1|T1], [[L,R]-S2|T2]) :-
-	% subtree merge, advance both
-	merge(T0, T1, T2),
-	merge(S0, S1, S2).
-merge_([[L0,R0]-S0|T0], [[L1,R1]-S1|T1], Tn) :-
-	R1 < L0,
-	% advance right
-	merge([[L0,R0]-S0|T0], T1, T2),
-	Tn = [[L1,R1]-S1|T2]
-;	R0 < L1,
-	% advance left
-	merge(T0, [[L1,R1]-S1|T1], T2),
-	Tn = [[L0,R0]-S0|T2]
-;	R1 >= L0, R0 >= L1,
-	% split and retry
-	(L1 > L0 ; L1 < L0 ; L1=L0, R1 > R0 ; L1=L0, R1 < R0),
-	split([L0,R0], [L1,R1], S0, S1, T0, T1, T0b, T1b),
-	merge(T0b, T1b, Tn).
 
-split(B0, B1, S0, S1, T0, T1, T0o, T1o) :-
-	%format("split(~w, ~w, ?)~n", [B0, B1]),
-	split_(B0, B1, S0, S1, T0, T1, T0o, T1o).
-split_(B, B, S0, S1, T0, T1, [B-S0|T0], [B-S1|T1]).
-split_(
-	[L,R0], [L,R1], S0, S1, T0, T1,
-	[[L,R0]-S0|T0], [[L,R0]-S1,[Cut,R1]-S1|T1]
-) :- R0 < R1, Cut is R0 + 1.
-split_(
-	[L,R0], [L,R1], S0, S1, T0, T1,
-	[[L,R1]-S0,[Cut,R0]-S0|T0], [[L,R0]-S1|T1]
-) :- R0 > R1, Cut is R1 + 1.
-split_(
-	[L0,R0], [L1,R1], S0, S1, T0, T1,
-	[[L0,Cut]-S0|T0b], T1b
-) :-
-	L0 < L1, Cut is L1 - 1,
-	split([L1,R0], [L1,R1], S0, S1, T0, T1, T0b, T1b).
-split_(
-	[L0,R0], [L1,R1], S0, S1, T0, T1,
-	T0b, [[L1,Cut]-S1|T1b]
-) :-
-	L0 > L1, Cut is L0 - 1,
-	split([L0,R0], [L0,R1], S0, S1, T0, T1, T0b, T1b).
+% duh, build a tree of ranges, work through the list backwards
+% only insert, where there is nothing, do not overwrite already written data
 
-iter_merge(Ts, T, Rest) :- iter_merge(Ts, [], T, Rest).
-iter_merge([], Acc, Acc, 0).
-iter_merge(In, Acc, Acc, N) :- integer(N), N>0, length(In, N).
-iter_merge([T|Ts], Acc, Tn, Rest) :-
-	(integer(Rest), length([T|Ts], N), N > Rest ; var(Rest)),
-	!,
-	merge(Acc, T, Tc),
-	iter_merge(Ts, Tc, Tn, Rest).
+process(Is, T) :- process(Is, [], T).
+process([], T, T).
+process([instr(IO, AABB)|Is], T0, Tn) :-
+	( length(Is, In), format("~d ~w ~w ", [In, IO, AABB]) ),
+	insert(T0, IO, AABB, T1),
+	format("~n", []),
+	process(Is, T1, Tn).
 
-% I don't know, still pretty slow
-% maybe use an octree split instead?
-% I don't know how complicated that split is though...
+% leaf, no overwrites are allowed, only insertion into non-existant var
+insert(l(IO), _, [], l(IO)).
+insert([], IO, [], l(IO)).
+% empty tree
+insert([], IO, [Bm,BM|Bs], [n(Bm,BM,TChildren)]) :-
+	insert([], IO, Bs, TChildren).
+% bounds are before
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], T) :-
+	BM < Nm,
+	insert([], IO, Bs, Children),
+	T = [n(Bm,BM, Children), n(Nm,NM, NCs)|Ns].
+% bounds are after
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], [n(Nm,NM, NCs)|T]) :-
+	Bm > NM,
+	insert(Ns, IO, [Bm,BM|Bs], T).
+% bounds collide with prefix
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], [n(Bm,BM1, BCs)|T]) :-
+	Bm < Nm, BM >= Nm,
+	BM1 is Nm - 1, Bm1 = Nm,
+	format("~w ", [Bs]),
+	insert([], IO, Bs, BCs),
+	insert([n(Nm,NM, NCs)|Ns], IO, [Bm1,BM|Bs], T).
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], [n(Nm,NM1, NCs)|T]) :-
+	Bm > Nm, Bm =< NM,
+	NM1 = Bm - 1, Nm1 = Bm,
+	insert([n(Nm1,NM, NCs)|Ns], IO, [Bm,BM|Bs], T).
+% bounds collide with suffixes
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], [n(Nm,NM1, NC1), n(Nm1,NM, NCs)|Ns]) :-
+	Bm = Nm, BM < NM,
+	NM1 = BM, Nm1 is BM + 1,
+	format("~w ", [Bs]),
+	insert(NCs, IO, Bs, NC1).
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], [n(Nm,NM, NC1)|T]) :-
+	Bm = Nm, BM > NM,
+	Bm1 is NM + 1,
+	format("~w ", [Bs]),
+	insert(NCs, IO, Bs, NC1),
+	insert(Ns, IO, [Bm1,BM|Bs], T).
+% bounds collide exactly
+insert([n(Nm,NM, NCs)|Ns], IO, [Bm,BM|Bs], [n(Nm,NM, NC1)|Ns]) :-
+	Bm = Nm, BM = NM,
+	insert(NCs, IO, Bs, NC1).
 
-answer1(_) :- fail.
+area([], _, 0).
+area(l(IO), IO, 1).
+area(l(on), off, 0).
+area(l(off), on, 0).
+area([n(Nm,NM, NCs)|Ns], IO, N) :-
+	area(NCs, IO, NN),
+	area(Ns, IO, NsN),
+	N is NsN + (NM - Nm + 1) * NN.
 
-answer2(_) :- fail.
+answer1(N) :-
+	input(Is),
+	filter([-50,50], Is, I1),
+	reverse(I1, I2),
+	process(I2, T),
+	area(T, on, N).
 
+answer2(N) :-
+	input(Is),
+	reverse(Is, Ir),
+	process(Ir, T),
+	area(T, on, N).
+	
