@@ -56,4 +56,11 @@ fn main() {
         }
     }
     println!("part 1: {sum}");
+    
+    let used = dirs[&PathBuf::from("/")];
+    let free = 70000000 - used;
+    let want = 30000000 - free;
+    println!("used: {used} free: {free} want: {want}");
+    let target = *dirs.values().filter(|v| **v >= want).min().unwrap_or(&0);
+    println!("part 2: {target}");
 }
