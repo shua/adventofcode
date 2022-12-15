@@ -28,10 +28,12 @@ fn pts(a: &V2, b: &V2) -> impl Iterator<Item=V2> {
     let d = sub(b, a);
     let (a, b) = (*a, *b);
     let bds = (min(0,d[0]), min(0,d[1]), max(0,d[0]), max(0,d[1]));
-    (bds.0..=bds.2).flat_map(move |x| (bds.1..=bds.3).map(move |y| [
+    let mut it = (bds.0..=bds.2).flat_map(move |x| (bds.1..=bds.3).map(move |y| [
             if bds.0 < 0 { b[0] - x } else { a[0] + x }, 
             if bds.1 < 0 { b[1] - y } else { a[1] + y },
-        ]))
+        ]));
+    it.next();
+    it
 }
 
 fn plot<'i, T: IntoIterator<Item=&'i V2>>(pts: T) {
