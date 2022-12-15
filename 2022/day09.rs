@@ -62,37 +62,41 @@ fn main() {
     }).collect();
 
     let mut h = [0,0];
-    let mut t = [0,0];
-    let mut visited = HashSet::new();
-    visited.insert(t);
+    let mut t = [[0,0]; 9];
+    let mut visited1 = HashSet::new();
+    let mut visited9 = HashSet::new();
+    visited1.insert(t[0]);
+    visited9.insert(t[8]);
     for op in ops.iter() {
         assert!(op[0] == 0 || op[1] == 0);
-        let hp = add(&h, op);
-        //print!("{h:?} -> {hp:?}: ");
-        for pt in pts(&h, &hp) {
-            //print!("{pt:?}");
-            let mut tp = t;
-            match (pt[0] - t[0], pt[1] - t[1]) {
-                (1|0|-1,1|0|-1) => {}
-                (2, y @ (-1|0|1)) => { tp[0] += 1; tp[1] += y; }
-                (-2, y @ (-1|0|1)) => { tp[0] -= 1; tp[1] += y; }
-                (x @ (-1|0|1), 2) => { tp[0] += x; tp[1] += 1; }
-                (x @ (-1|0|1), -2) => { tp[0] += x; tp[1] -= 1; }
-                _ => panic!("unexpected stated: H {pt:?} T {t:?}"),
+        let h0 = h;
+        h = add(&h, op);
+        //println!("{h0:?}->{h:?}: ");
+        for pt in pts(&h0, &h) {
+            //print!("    {pt:?}");
+            let mut t0 = pt;
+            for (i, t) in t.iter_mut().enumerate() {
+                *t = match sub(&t0, t) {
+                    [-1..=1, -1..=1] => break,
+                    [x @ -2..=2, y @ -2..=2] => add(t, &[x.signum(), y.signum()]),
+                    _ => panic!("unexpected state: T{} {t0:?} T{} {t:?}", i, i+1),
+                };
+
+                //print!("{t:?}");
+                t0 = *t;
+                if i == 0 && visited1.insert(*t) {
+                    //print!("+");
+                }
+                if i == 8 && visited9.insert(*t) {
+                    //print!("+");
+                }
             }
-            if tp != t {
-                //print!("*{tp:?}");
-                t = tp;
-            }
-            if visited.insert(t) {
-                //print!("+");
-            }
-            //print!(", ");
+            //println!(", ");
         }
         //println!();
-        h = hp;
     }
     //println!("{visited:?}");
     //plot(&visited);
-    println!("part 1: {}", visited.len());
+    println!("part 1: {}", visited1.len());
+    println!("part 2: {}", visited9.len());
 }
