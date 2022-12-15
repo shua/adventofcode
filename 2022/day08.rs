@@ -83,7 +83,6 @@ fn main() {
     println!("part 1: {}", vis.iter().filter(|b| **b).count());
 
     let mut scenic = vec![[0u8;4]; width*height];
-    let mut blocking = vec![[0u8;4]; width*height];
     let [up,dn,lt,rt] = [0usize,1,2,3];
     macro_rules! scenic { ($x:expr, $y:expr) => { scenic[$y*width+$x] }; }
     macro_rules! map { ($x:expr, $y:expr) => { map[$y*width+$x] }; }
