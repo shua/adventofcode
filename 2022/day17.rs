@@ -104,3 +104,99 @@ fn main() {
     
     println!("part 1: {}", tunnel.len());
 }
+
+fn pack(ns: [u8;4]) -> u32 {
+    u32::from_ne_bytes(ns)
+}
+fn unpack(n: u32) -> [u8;4] { n.to_ne_bytes() }
+fn main2() {
+    let mut tunnel = vec![];
+    let jet = INPUT[1].as_bytes();
+    // leftmost 7 bits are in play
+    // fall is movement or new rock @ top+3, left+2
+    // jet is << or >> UNLESS \E bits. bits.ones() != (bits' & ~0b1).ones()
+    let rocks : Vec<_> = ROCKS.iter().map(|r| pack(*r)).collect();
+
+    let mut rockend : Vec<Vec<(u32, usize, usize, usize)>> = vec![vec![]; jet.len()];
+    let mut jeti = 0;
+    let mut n = 0;
+    let mut skipped = 0;
+    while n < 1000000000000 {
+        tunnel.extend([1u8;7]);
+        let mut bot = tunnel.len()-4;
+        let mut rock = rocks[n%ROCKS.len()];
+        let mut pos = 2;
+        loop {
+            let tslice = pack(tunnel[bot..bot+4].try_into().unwrap());
+            // jet
+            let jet = jet[jeti % jet.len()];
+            jeti += 1;
+            let isect = if jet == b'>' {
+                rock >> 1 & tslice != 0
+            } else {
+                rock << 1 & tslice != 0 || rock & 0x8000_0000 != 0
+            };
+            /*
+            println!("jet {jet} {shift}");
+            rock.iter().zip(tslice.iter()).for_each(|(&r, &t)| {
+                let pb = |i, n| print!("{}", if (1u8 << 8-i) & n == 0u8 { '.' } else { '#' });
+                for i in 1..8 { pb(i, r) }
+                print!(" ");
+                for i in 1..8 { pb(i, t) }
+                print!(" ");
+                for i in 1..8 { pb(i, r | t) }
+                println!();
+            });
+            */
+            if !isect {
+                if jet == b'>' {
+                    rock >>= 1;
+                    pos += 1;
+                } else {
+                    rock <<= 1;
+                    pos -= 1;
+                }
+            }
+            // fall
+            if bot == 0 {
+                rock |= tslice;
+                break;
+            }
+            let tnext = pack(tunnel[bot-1..bot+3].try_into().unwrap());
+            if (rock & tnext) != 0 {
+                rock |= tslice;
+                break;
+            }
+            bot -= 1;
+        }
+        for (i, r) in unpack(rock).into_iter().enumerate() {
+            tunnel[bot+i] = r;
+        }
+
+        let mut top = tunnel.len()-1;
+        while top > 0 && tunnel[top] == 1 {
+            top -= 1;
+        }
+        tunnel.truncate(top+1);
+        
+        let rend = &mut rockend[jeti % jet.len()];
+        if let Some((_, _, n0, top0)) = rend.iter().find(|(rock0, rocki0, _, _)| (*rock0, *rocki0) == (rock, n % ROCKS.len())) {
+            let (nd, sd) = (n - n0, (top + skipped) - top0);
+            while n+nd <= 1000000000000 {
+                n += nd;
+                skipped += sd;
+            }
+        } else {
+            rend.push((rock, n % ROCKS.len(), n, top + skipped));
+        }
+        
+        n += 1;
+        //println!("tunnel {n}");
+        //plot(&tunnel);
+    }
+    
+    println!("part 2: {}", tunnel.len() + skipped);
+    
+    println!("{} {}", INPUT[0].len(), INPUT[1].len());
+    // find a pattern in the cycles and extrapolate
+}
