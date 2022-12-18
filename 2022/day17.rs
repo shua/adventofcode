@@ -39,7 +39,7 @@ fn plot(tunnel: &[u8]) {
     }
     println!("+-------+");
 }
-fn main() {
+fn part1() {
     let mut tunnel = vec![];
     let mut jet = std::iter::repeat(INPUT[1]).flat_map(|s| s.bytes());
     // leftmost 7 bits are in play
@@ -109,7 +109,7 @@ fn pack(ns: [u8;4]) -> u32 {
     u32::from_ne_bytes(ns)
 }
 fn unpack(n: u32) -> [u8;4] { n.to_ne_bytes() }
-fn main2() {
+fn part2() {
     let mut tunnel = vec![];
     let jet = INPUT[1].as_bytes();
     // leftmost 7 bits are in play
@@ -117,11 +117,13 @@ fn main2() {
     // jet is << or >> UNLESS \E bits. bits.ones() != (bits' & ~0b1).ones()
     let rocks : Vec<_> = ROCKS.iter().map(|r| pack(*r)).collect();
 
-    let mut rockend : Vec<Vec<(u32, usize, usize, usize)>> = vec![vec![]; jet.len()];
+    let mut rockend : Vec<Vec<(u32, usize, usize)>> = vec![vec![]; jet.len()];
     let mut jeti = 0;
     let mut n = 0;
     let mut skipped = 0;
-    while n < 1000000000000 {
+    //const LIMIT : usize = 2022;
+    const LIMIT : usize = 1000000000000;
+    while n < LIMIT {
         tunnel.extend([1u8;7]);
         let mut bot = tunnel.len()-4;
         let mut rock = rocks[n%ROCKS.len()];
@@ -179,15 +181,18 @@ fn main2() {
         }
         tunnel.truncate(top+1);
         
-        let rend = &mut rockend[jeti % jet.len()];
-        if let Some((_, _, n0, top0)) = rend.iter().find(|(rock0, rocki0, _, _)| (*rock0, *rocki0) == (rock, n % ROCKS.len())) {
+        let rend = &rockend[jeti % jet.len()];
+        if let Some((_, n0, top0)) = rend.iter().find(|&&(rock0, n0, top0)| (rock0, n0 % ROCKS.len()) == (rock, n % ROCKS.len()) && &tunnel[top-10..top] == &tunnel[top0-10..top0]) {
             let (nd, sd) = (n - n0, (top + skipped) - top0);
-            while n+nd <= 1000000000000 {
-                n += nd;
-                skipped += sd;
+            let scale = (LIMIT-n) / nd;
+            if scale > 0 {
+                println!("REPEAT {n0} {top0} {n} {top}");
+                n += scale * nd;
+                skipped += scale * sd;
+                println!("SKIPPED TO {n} {}", top + skipped);
             }
         } else {
-            rend.push((rock, n % ROCKS.len(), n, top + skipped));
+            rockend[jeti % jet.len()].push((rock, n, top + skipped));
         }
         
         n += 1;
@@ -196,7 +201,12 @@ fn main2() {
     }
     
     println!("part 2: {}", tunnel.len() + skipped);
-    
-    println!("{} {}", INPUT[0].len(), INPUT[1].len());
-    // find a pattern in the cycles and extrapolate
+    if jet == INPUT[0].as_bytes() {
+        assert!((tunnel.len() + skipped) == 1514285714288);
+    }
+}
+
+fn main() {
+    part1();
+    part2();
 }
