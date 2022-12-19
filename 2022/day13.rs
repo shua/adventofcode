@@ -22,7 +22,7 @@ const INPUT: [&str; 2] = ["[1,1,3,1,1]
 [1,[2,[3,[4,[5,6,7]]]],8,9]
 [1,[2,[3,[4,[5,6,0]]]],8,9]", include_str!("day13.txt")];
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq,Ord)]
 enum Packet { L(Vec<Packet>), I(u32) }
 impl PartialOrd for Packet {
     fn partial_cmp(&self, rhs: &Packet) -> Option<std::cmp::Ordering> {
@@ -72,12 +72,26 @@ fn main() {
         assert!(&input[i..i+2] == b"\n[");
         i += 2;
         let p1 = parse_list(input, &mut i);
-        p.push((p0, p1));
+        p.push(p0);
+        p.push(p1);
         if i < input.len() {
             assert!(&input[i..i+3] == b"\n\n[");
             i += 3;
         }
     }
-    println!("{p:?}");
-    println!("part 1: {}", p.iter().enumerate().filter(|(i, (a,b))| a < b).fold(0, |acc, (i, _)| acc + i + 1));
+    //println!("{p:?}");
+    println!("part 1: {}", p.chunks(2).enumerate().filter(|(i, ab)| ab[0] < ab[1]).fold(0, |acc, (i, _)| acc + i + 1));
+
+    let div = [
+        Packet::L(vec![Packet::L(vec![Packet::I(2)])]),
+        Packet::L(vec![Packet::L(vec![Packet::I(6)])])];
+    p.extend(div.clone().into_iter());
+    p.sort();
+    let mut key = 1;
+    for (i, p) in p.iter().enumerate() {
+        if div.contains(p) {
+            key *= (i+1);
+        }
+    }
+    println!("part 2: {key}")
 }
