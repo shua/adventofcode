@@ -20,16 +20,30 @@ Ex ← $$ 162,817,812
      $$ 425,690,689
 
 Input  ← Ex
+Count  ← 10
 Input  ← °(˜⊂ @\n) &fras "day8.txt"
+Count  ← 1000
 Parsed ← ⊜(⊜⋕ ⊸≠@,) ⊸≠@\n Input
 SqDist ← /+ ˙× -
 
+# TODO: probably a better way to do this using `tuples`
 ˙⊞SqDist Parsed
 ≡₀(˜⊂ °□) ≡₁□ °⊡
 ↯[˙× ⧻Parsed 3]
-⍆
-⊏ + ⧻Parsed⇡(×2 1000)
+≡(⊏ 1_2) ⍆                      # sort by dist
+↯[⧻Parsed] [0]                  # skip first N
+♭↯[-⧻Parsed ˙× ⧻Parsed] [[0 1]] # rest are duplicate pairs
+▽˜⊂
 
-⊙(⇡ ⧻Parsed)
-∧(+ ⊃(×|⋅(×¬)) ⊙⊸= °⊟ ⊸⊏ ⊏ 1_2)
-/× ⊏ ⇡3 ⇌⍆ ˙⊜⧻ +1 ⍆
+Step ← +⊃(×|⋅(×¬)) ⊙⊸= °⊟ ⊸⊏
+
+# part 1
+# ⊙(⇡ ⧻Parsed)
+# ⊏ ⇡Count ?
+# ∧(Step)
+# /× ⊏ ⇡3 ⇌⍆ ˙⊜⧻ +1 ⍆
+
+# part 2
+⍢(⊸˜Step ⊙°⊂ ⊙◌)(¬/×=°⊂) ⇡⧻Parsed [0 0]
+⊏ ⊙⋅Parsed ◌
+/× ≡(⊏0)
